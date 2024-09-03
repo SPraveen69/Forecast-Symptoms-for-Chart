@@ -1,0 +1,78 @@
+﻿@page
+@model IndexModel
+@{
+    ViewData["Title"] = "Home page";
+
+}
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Chart</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
+</head>
+<body>
+    <canvas id="myChart" width="400" height="200"></canvas>
+    <script>
+        fetch('https://localhost:7119/Data/GetHistoricalData')
+            .then(response => response.json())
+            .then(historicalData => {
+                fetch('https://localhost:7119/Data/GetForecastData')
+                    .then(response => response.json())
+                    .then(forecastData => {
+                        // Combine dates from historical and forecast data
+                        const allDates = [
+                            ...historicalData.map(d => d.recordDate),
+                            ...forecastData.map(d => d.recordDate)
+                        ];
+
+                        // Remove duplicate dates and sort
+                        const uniqueDates = [...new Set(allDates)].sort((a, b) => new Date(a) - new Date(b));
+
+                        const ctx = document.getElementById('myChart').getContext('2d');
+                        new Chart(ctx, {
+                            type: 'line',
+                            data: {
+                                labels: uniqueDates,
+                                datasets: [
+                                    {
+                                        label: 'Historical Data',
+                                        data: uniqueDates.map(date => {
+                                            const entry = historicalData.find(d => d.recordDate === date);
+                                            return entry ? entry.symptomCounts : null;
+                                        }),
+                                        borderColor: 'blue',
+                                        fill: false
+                                    },
+                                    {
+                                        label: 'Forecast Data',
+                                        data: uniqueDates.map(date => {
+                                            const entry = forecastData.find(d => d.recordDate === date);
+                                            return entry ? entry.symptomCounts : null;
+                                        }),
+                                        borderColor: 'orange',
+                                        fill: false
+                                    }
+                                ]
+                            },
+                            options: {
+                                scales: {
+                                    x: {
+                                        type: 'time',
+                                        time: {
+                                            unit: 'day',
+                                            tooltipFormat: 'yyyy-MM-dd', 
+                                        },
+                                    },
+                                    y: {
+                                        beginAtZero: true
+                                    }
+                                }
+                            }
+                        });
+                    });
+            });
+    </script>
+</body>
+</html>
